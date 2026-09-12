@@ -13,6 +13,8 @@ Four tools, one static page, zero dependencies — every number measured in your
 
 **Live: <https://mohittt-vermaa.github.io/mlbox/>** — no install, no API key, no GPU, no backend. Your text never leaves your machine.
 
+> ⭐ **If mlbox is useful to you, star the repo** — it's the single best way to help other people find it. [→ github.com/mohittt-vermaa/mlbox](https://github.com/mohittt-vermaa/mlbox)
+
 ---
 
 ## What's inside
@@ -85,16 +87,47 @@ on every bundled dataset (and *fails to* converge where it should, e.g. one hidd
 `npm run test:browser` drives the deployed site in headless Chrome — 21 end-to-end checks,
 including the diff view, share-link round-trip, and zero console errors.
 
-## Quickstart
+## Run it on any device
 
-```bash
-git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox
-python3 -m http.server 8000        # any static server works
-open http://localhost:8000
+There is nothing to compile. Any of these gets you a running mlbox in under a minute — pick whatever your machine already has.
+
+| You have… | Do this | Works on |
+|---|---|---|
+| Nothing to install | Open <https://mohittt-vermaa.github.io/mlbox/> | every device with a browser |
+| Python 3 (macOS, most Linux) | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && python3 -m http.server 8000` → open `http://localhost:8000` | macOS · Linux · Windows (with Python) |
+| Python 2 | `python -m SimpleHTTPServer 8000` | older systems |
+| Node.js | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && npx serve .` | any OS |
+| PHP | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && php -S localhost:8000` | any OS |
+| Docker | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && docker run --rm -p 8000:80 -v "$PWD:/usr/share/nginx/html:ro" nginx:alpine` | any OS with Docker |
+| Ruby | `cd mlbox && ruby -run -e httpd . -p 8000` | macOS / Linux |
+| Just the files | `git clone …` and double-click `index.html`* | Windows · macOS · Linux |
+| A phone / tablet | Open the live link → browser menu → **Add to Home Screen** | iOS · Android |
+
+\* Opening `index.html` directly (`file://`) works for the playground, recipes and prices tabs.
+The tokenizer tabs load vocabulary JSON, which browsers block over `file://` — use any of the
+one-liners above instead.
+
+**Windows (PowerShell) in full, copy-paste:**
+
+```powershell
+git clone https://github.com/mohittt-vermaa/mlbox
+cd mlbox
+python -m http.server 8000     # or: npx serve .
+start http://localhost:8000
 ```
 
-Deploying: it is a plain static site (`.nojekyll` included) — push to GitHub Pages, Netlify,
-S3, anywhere. There is no build step to run.
+**macOS / Linux (terminal), copy-paste:**
+
+```bash
+git clone https://github.com/mohittt-vermaa/mlbox
+cd mlbox
+python3 -m http.server 8000    # or: npx serve .
+open http://localhost:8000     # Linux: xdg-open http://localhost:8000
+```
+
+Want it on your own URL instead of localhost? Push your fork to GitHub and enable **Pages**
+(it's a plain static site; `.nojekyll` is included) — or drop the folder on Netlify/Vercel/S3.
+There is no build step anywhere.
 
 ## Architecture
 
@@ -149,3 +182,10 @@ Code is **MIT**. Vocabulary bundles in `data/tok/` are derived from upstream mod
 remain under their original licenses (Llama 3.1 Community, Apache-2.0, MIT, Gemma ToU) — see
 [`NOTICE.md`](NOTICE.md). Pricing is transcribed from providers' own pages on the date shown in
 the app and is for reference only — check the source link before you invoice anything.
+
+---
+
+<p align="center">
+  <b>If this tool helped you, please ⭐ <a href="https://github.com/mohittt-vermaa/mlbox">star the repo</a> — it's free, and it's how this project reaches the next person.</b><br>
+  Found a bug or want another tokenizer? <a href="https://github.com/mohittt-vermaa/mlbox/issues">Open an issue</a> — every one gets read.
+</p>
