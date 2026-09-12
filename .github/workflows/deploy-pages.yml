@@ -1,0 +1,43 @@
+# Deploys the static site to GitHub Pages on every push to main.
+#
+# No build step exists on purpose: the site is dependency-free static files, so the
+# workflow only has to upload the repo root and hand it to the Pages CDN. This is
+# also why deploys are fast (~10s) and can't rot.
+#
+# After the first push, GitHub creates the Pages environment automatically.
+# Live at: https://<owner>.github.io/<repo>/
+name: deploy-pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # path is the repo root: index.html + css/ js/ data/ docs/
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v6

@@ -1,0 +1,105 @@
+{
+  "as_of": "2026-09-12",
+  "currency": "USD per 1M tokens",
+  "note": "Every row was read off the provider's own pricing page on the `checked` date. Nothing here is scraped from third-party aggregators — when aggregators disagreed with each other we went to the source. Prices move; re-check before you budget.",
+  "providers": [
+    { "id": "openai", "name": "OpenAI", "url": "https://openai.com/business/pricing/#api" },
+    { "id": "anthropic", "name": "Anthropic", "url": "https://platform.claude.com/docs/en/about-claude/pricing" },
+    { "id": "google", "name": "Google", "url": "https://ai.google.dev/gemini-api/docs/pricing" },
+    { "id": "deepseek", "name": "DeepSeek", "url": "https://api-docs.deepseek.com/quick_start/pricing/" },
+    { "id": "xai", "name": "xAI", "url": "https://docs.x.ai/developers/models" }
+  ],
+  "models": [
+    {
+      "id": "gpt-6-astra", "name": "GPT-6 Astra", "org": "OpenAI",
+      "input": 10.0, "cached_input": 1.0, "output": 50.0,
+      "context": 272000, "tokenizer": "o200k", "tier": "frontier",
+      "checked": "2026-09-12", "source": "https://openai.com/business/pricing/#api",
+      "note": "Listed as promotional pricing."
+    },
+    {
+      "id": "gpt-5.6-sol", "name": "GPT-5.6 Sol", "org": "OpenAI",
+      "input": 4.0, "cached_input": 0.4, "output": 20.0,
+      "context": 272000, "tokenizer": "o200k", "tier": "frontier",
+      "checked": "2026-09-12", "source": "https://openai.com/business/pricing/#api",
+      "note": "Promotional rate (was $5 / $30), available at least through 2026-11-21. Batch API is 50% cheaper."
+    },
+    {
+      "id": "gpt-5.6-terra", "name": "GPT-5.6 Terra", "org": "OpenAI",
+      "input": 2.0, "cached_input": 0.2, "output": 12.0,
+      "context": 272000, "tokenizer": "o200k", "tier": "mid",
+      "checked": "2026-09-12", "source": "https://openai.com/business/pricing/#api",
+      "note": "Standard processing, context under 272K."
+    },
+    {
+      "id": "gpt-5.6-luna", "name": "GPT-5.6 Luna", "org": "OpenAI",
+      "input": 0.2, "cached_input": 0.02, "output": 1.2,
+      "context": 272000, "tokenizer": "o200k", "tier": "budget",
+      "checked": "2026-09-12", "source": "https://openai.com/business/pricing/#api",
+      "note": "Cheapest current OpenAI text model."
+    },
+    {
+      "id": "claude-fable-5.1", "name": "Claude Fable 5.1", "org": "Anthropic",
+      "input": 10.0, "cached_input": 0.25, "output": 50.0,
+      "context": 1000000, "tokenizer": null, "tier": "frontier",
+      "checked": "2026-09-12", "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "Cache hits priced at 0.025x base input. 5m cache writes $12.50, 1h $20."
+    },
+    {
+      "id": "claude-opus-5", "name": "Claude Opus 5", "org": "Anthropic",
+      "input": 5.0, "cached_input": 0.5, "output": 25.0,
+      "context": 1000000, "tokenizer": null, "tier": "frontier",
+      "checked": "2026-09-12", "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "Same price as Opus 4.8/4.7/4.6/4.5. Full 1M context at standard rate."
+    },
+    {
+      "id": "claude-sonnet-5", "name": "Claude Sonnet 5", "org": "Anthropic",
+      "input": 2.0, "cached_input": 0.2, "output": 10.0,
+      "context": 1000000, "tokenizer": null, "tier": "mid",
+      "checked": "2026-09-12", "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "Claude Sonnet 4.6 / 4.5 are $3 / $15."
+    },
+    {
+      "id": "claude-haiku-4.5", "name": "Claude Haiku 4.5", "org": "Anthropic",
+      "input": 1.0, "cached_input": 0.1, "output": 5.0,
+      "context": 200000, "tokenizer": null, "tier": "budget",
+      "checked": "2026-09-12", "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+      "note": "5m cache writes $1.25, 1h $2."
+    },
+    {
+      "id": "gemini-3.8-flash", "name": "Gemini 3.8 Flash", "org": "Google",
+      "input": 0.75, "cached_input": 0.075, "output": 3.75,
+      "context": 1000000, "tokenizer": "gemma3", "tier": "mid",
+      "checked": "2026-09-12", "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "note": "Paid tier, standard processing. Output price includes thinking tokens. Rate doubles on 2027-01-01 ($1.50 / $7.50). Batch is half price; Priority tier is $1.35 / $6.75."
+    },
+    {
+      "id": "gemini-3.7-flash", "name": "Gemini 3.7 Flash", "org": "Google",
+      "input": 0.75, "cached_input": 0.075, "output": 3.75,
+      "context": 1000000, "tokenizer": "gemma3", "tier": "mid",
+      "checked": "2026-09-12", "source": "https://ai.google.dev/gemini-api/docs/pricing",
+      "note": "Same standard rate as 3.8 Flash at launch."
+    },
+    {
+      "id": "deepseek-flash", "name": "DeepSeek Flash (V4.1)", "org": "DeepSeek",
+      "input": 0.15, "cached_input": 0.003, "output": 0.6,
+      "context": 1000000, "tokenizer": "deepseek", "tier": "budget",
+      "checked": "2026-09-12", "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "note": "Off-peak rate. Peak (01:00–04:00 and 06:00–10:00 UTC, Mon–Fri) is exactly double: $0.30 / $1.20."
+    },
+    {
+      "id": "deepseek-v4-pro", "name": "DeepSeek V4 Pro", "org": "DeepSeek",
+      "input": 0.66, "cached_input": 0.022, "output": 1.98,
+      "context": 1000000, "tokenizer": "deepseek", "tier": "budget",
+      "checked": "2026-09-12", "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "note": "Off-peak rate. Peak is $1.32 / $3.96. Cheapest way to buy a 1M-context reasoning model."
+    },
+    {
+      "id": "grok-4.6", "name": "Grok 4.6", "org": "xAI",
+      "input": 2.0, "cached_input": null, "output": 6.0,
+      "context": 500000, "tokenizer": null, "tier": "mid",
+      "checked": "2026-09-12", "source": "https://docs.x.ai/developers/models",
+      "note": "xAI's single flagship text model as of the docs revision of 2026-08-21."
+    }
+  ]
+}

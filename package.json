@@ -1,0 +1,29 @@
+{
+  "name": "mlbox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Four ML tools in one static page: tokenizer lens, browser playground, no-GPU recipes, and current LLM prices. No GPU, no API key, no install, no build step.",
+  "scripts": {
+    "serve": "python3 -m http.server 8000 --bind 0.0.0.0",
+    "test": "npm run test:tokenizer && npm run test:playground",
+    "test:tokenizer": "node tests/tokenizer.test.mjs",
+    "test:playground": "node tests/playground.test.mjs",
+    "test:browser": "node tests/browser.test.mjs",
+    "fetch:models": "python3 tools/fetch_models.py",
+    "build:tokenizers": "python3 tools/build_tokenizers.py",
+    "build:refs": "python3 tools/gen_reference.py"
+  },
+  "keywords": [
+    "tokenizer",
+    "llm",
+    "ml",
+    "education",
+    "gpu-poor",
+    "playground",
+    "llm-pricing",
+    "no-build",
+    "static-site"
+  ],
+  "license": "MIT"
+}

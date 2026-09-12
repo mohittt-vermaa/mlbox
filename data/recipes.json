@@ -1,0 +1,197 @@
+{
+  "note": "Recipes for doing real ML with no GPU. Times are rough orders of magnitude on a modern 4–8 core laptop CPU unless stated — treat them as 'minutes / hours / overnight', not as benchmarks. Nothing here is a substitute for running it yourself.",
+  "tiers": [
+    {
+      "id": "laptop",
+      "name": "Laptop CPU only",
+      "spec": "4–8 cores, 8–16 GB RAM, no discrete GPU",
+      "fits": "Models under ~150M params if you're patient. NumPy/PyTorch CPU, tiny transformers, tabular models, classical ML, tokenizer training, distillation of tiny students.",
+      "watch": "Set torch.set_num_threads() to your physical core count, keep batch size small, and use fp32 (bf16 on CPU is often slower)."
+    },
+    {
+      "id": "colab",
+      "name": "Google Colab free tier",
+      "spec": "One T4 16 GB (sometimes P100), ~3–6h sessions, idle timeout",
+      "fits": "LoRA/QLoRA on 7B–13B models, small diffusion models, anything that needs a GPU for under a few hours.",
+      "watch": "Sessions die. Checkpoint to Google Drive every N steps or you will lose work. Save optimizer state, not just weights."
+    },
+    {
+      "id": "kaggle",
+      "name": "Kaggle notebooks",
+      "spec": "30 GPU-hours/week (P100 or T4 x2), 20h internet off, 9h with internet",
+      "fits": "The best free GPU allowance that exists. Multi-day experiment schedules if you split them into weekly chunks.",
+      "watch": "Internet is off by default — upload datasets as Kaggle Datasets first."
+    },
+    {
+      "id": "local-gpu",
+      "name": "Used consumer GPU",
+      "spec": "RTX 3060 12 GB / 4060 Ti 16 GB, ~$250–450 used",
+      "fits": "12–16 GB VRAM runs 7B QLoRA, Stable Diffusion inference + light training, and every recipe below comfortably.",
+      "watch": "VRAM is the only number that matters. 12 GB beats 8 GB for everything you'll do."
+    }
+  ],
+  "recipes": [
+    {
+      "id": "grokking",
+      "title": "Grokking on modular addition",
+      "tagline": "Watch a network memorise, then suddenly generalise — the cleanest demo in ML.",
+      "hardware": "laptop",
+      "time": "10–40 min for a small run; the classic paper-scale run is hours",
+      "difficulty": "medium",
+      "why": "The model is a ~15M-param transformer on a 2-digit addition task. The dataset is tiny, so it fits in RAM and the compute is dominated by small matmuls — a CPU handles it fine, just slowly.",
+      "learn": ["delayed generalisation", "weight decay as a generalisation trigger", "train/val accuracy divergence", "why 'converged' is not the same as 'done'"],
+      "code": "pip install torch numpy matplotlib\npython train.py --p 97 --epochs 40000 --wd 1.0   # grok\npython train.py --p 97 --epochs 40000 --wd 0.0   # no grok",
+      "gotcha": "The interesting thing happens 10–100x after train accuracy hits 100%. If you stop at convergence you see nothing. Log val accuracy every 100 steps for the whole run.",
+      "links": [
+        { "label": "Power et al. 2022, Grokking", "url": "https://arxiv.org/abs/2201.02177" },
+        { "label": "Neel Nanda's mech-interp walkthrough", "url": "https://www.neelnanda.io/mechanistic-interpretability/favourite-papers" }
+      ]
+    },
+    {
+      "id": "nanogpt-tiny",
+      "title": "Train a 10M-param GPT from scratch",
+      "tagline": "A real language model, character-level, on your laptop.",
+      "hardware": "laptop",
+      "time": "30–90 min",
+      "difficulty": "medium",
+      "why": "nanoGPT at ~10M params on TinyShakespeare (1 MB of text) converges to recognisable Shakespearean English on a CPU. The code is ~300 lines and readable end to end.",
+      "learn": ["the full training loop", "what each hyperparameter actually does", "why data repetition causes memorisation", "sampling temperature"],
+      "code": "git clone https://github.com/karpathy/nanoGPT\npython data/shakespeare_char/prepare.py\npython train.py config/train_shakespeare_char.py --device=cpu --compile=False",
+      "gotcha": "Set --compile=False on CPU. torch.compile is a GPU win and a CPU waste.",
+      "links": [{ "label": "nanoGPT", "url": "https://github.com/karpathy/nanoGPT" }]
+    },
+    {
+      "id": "tokenizer",
+      "title": "Train your own BPE tokenizer",
+      "tagline": "The one part of the LLM stack you can rebuild completely from scratch in an afternoon.",
+      "hardware": "laptop",
+      "time": "5–30 min depending on corpus size",
+      "difficulty": "easy",
+      "why": "BPE training is a counting problem. 50k merges over a 1 GB corpus runs on CPU; over a 10 MB corpus it takes seconds.",
+      "learn": ["how merges actually work", "why your language is expensive", "vocab size trade-offs", "byte-fallback vs unknown tokens"],
+      "code": "pip install tokenizers\npython -c \"from tokenizers import Tokenizer, models, trainers, pre_tokenizers; \\\nt=Tokenizer(models.BPE(unk_token='<unk>')); t.pre_tokenizer=pre_tokenizers.Whitespace(); \\\nt.train(['corpus.txt'], trainers.BpeTrainer(vocab_size=30000, special_tokens=['<unk>','<s>','</s>'])); \\\nt.save('tok.json')\"",
+      "gotcha": "Then open this page's Tokenizer tab and compare your tokenizer against the big ones on the same Hindi paragraph. That comparison is the whole lesson.",
+      "links": [{ "label": "HF tokenizers course", "url": "https://huggingface.co/docs/tokenizers" }]
+    },
+    {
+      "id": "lora-cpu",
+      "title": "LoRA fine-tune a 0.5B model on CPU",
+      "tagline": "Real fine-tuning, no GPU, if you pick a small enough base model.",
+      "hardware": "laptop",
+      "time": "1–4 hours for a few thousand examples",
+      "difficulty": "medium",
+      "why": "A 0.5B model in fp32 is ~2 GB. With LoRA you only backprop through a few hundred thousand trainable params, so the compute is dominated by the frozen forward pass — slow but finite.",
+      "learn": ["adapter training", "why rank matters less than data quality", "instruction formatting", "eval that isn't just loss"],
+      "code": "pip install transformers peft datasets accelerate\n# base: Qwen2.5-0.5B-Instruct, r=8, target q_proj,v_proj, 3 epochs\n# ~2–5 examples/sec on 8 cores",
+      "gotcha": "For 7B+ models this is a Colab/Kaggle job, not a CPU job. QLoRA specifically needs a CUDA GPU for the 4-bit kernels.",
+      "links": [
+        { "label": "PEFT docs", "url": "https://huggingface.co/docs/peft" },
+        { "label": "LoRA paper", "url": "https://arxiv.org/abs/2106.09685" }
+      ]
+    },
+    {
+      "id": "distill",
+      "title": "Distil a tiny student from a big teacher",
+      "tagline": "Steal a big model's behaviour into something that runs on a phone.",
+      "hardware": "laptop",
+      "time": "20–60 min",
+      "difficulty": "medium",
+      "why": "The teacher only runs inference (or you can pre-generate its outputs once), and the student is tiny. Pre-generating teacher outputs to disk turns the whole job into a normal supervised training run.",
+      "learn": ["soft labels vs hard labels", "temperature in distillation", "why the student beats its own hard-label training", "dataset size vs student capacity"],
+      "code": "# 1. run teacher once, save (input, logits) pairs\n# 2. train student with KL(teacher_logits/T, student_logits/T) * T^2 + CE(labels)",
+      "gotcha": "Cache the teacher outputs. Re-running the teacher every epoch is the difference between an hour and a day.",
+      "links": [{ "label": "Hinton et al., Distilling the Knowledge in a Neural Network", "url": "https://arxiv.org/abs/1503.02531" }]
+    },
+    {
+      "id": "tiny-diffusion",
+      "title": "Tiny diffusion model on MNIST",
+      "tagline": "DDPM small enough that you can read every line of it.",
+      "hardware": "laptop",
+      "time": "20–60 min for decent MNIST samples",
+      "difficulty": "hard",
+      "why": "A small U-Net on 28x28 is maybe 2M params. The noise schedule and loss are ~50 lines. CIFAR-10 also works but wants hours.",
+      "learn": ["forward/reverse process", "why you predict noise not images", "classifier-free guidance", "the epsilon/parameterisation choice"],
+      "code": "pip install torch torchvision matplotlib\n# ~2M param U-Net, 1000 timesteps, cosine schedule, EMA on weights",
+      "gotcha": "Use EMA of the weights for sampling. Without it your samples look noticeably worse and you'll blame the wrong thing.",
+      "links": [{ "label": "DDPM paper", "url": "https://arxiv.org/abs/2006.11239" }, { "label": "Lil'DDPM walkthrough", "url": "https://github.com/labmlai/annotated_deep_learning_paper_implementations" }]
+    },
+    {
+      "id": "numpy-backprop",
+      "title": "Backprop from scratch in NumPy",
+      "tagline": "Two hours that make every framework feel transparent forever after.",
+      "hardware": "laptop",
+      "time": "2 hours of your life, seconds of compute",
+      "difficulty": "easy",
+      "why": "No GPU is involved anywhere in autograd. You write the forward pass, derive the gradients by hand, and check them against numerical differentiation.",
+      "learn": ["the chain rule as code", "why gradient checking matters", "initialisation", "what a framework is actually doing for you"],
+      "code": "# gradient check: (f(w+eps) - f(w-eps)) / (2*eps) should match your analytic grad\n# if rel error > 1e-5, your gradient is wrong — the network will still 'train', just worse",
+      "gotcha": "Always gradient-check. A subtly wrong gradient trains, just slowly, and you will waste a week debugging your 'architecture'.",
+      "links": [{ "label": "karpathy/micrograd", "url": "https://github.com/karpathy/micrograd" }]
+    },
+    {
+      "id": "tabular",
+      "title": "Beat a neural net with gradient boosting",
+      "tagline": "On tabular data this is true more often than people admit.",
+      "hardware": "laptop",
+      "time": "5–30 min",
+      "difficulty": "easy",
+      "why": "LightGBM and XGBoost are CPU-native, multithreaded, and extremely strong on structured data. This is where a laptop is genuinely competitive with a cluster.",
+      "learn": ["feature engineering", "cross-validation discipline", "calibration", "when a transformer is the wrong tool"],
+      "code": "pip install lightgbm scikit-learn pandas\n# always set early_stopping_rounds and use out-of-fold predictions for ensembling",
+      "gotcha": "Your leakage is almost always in the preprocessing. Fit the scaler/imputer inside the CV fold, never on the full dataset.",
+      "links": [{ "label": "Why do tree-based models still outperform deep learning on tabular data?", "url": "https://arxiv.org/abs/2207.08815" }]
+    },
+    {
+      "id": "dqn",
+      "title": "DQN on CartPole / LunarLander",
+      "tagline": "Reinforcement learning that finishes before your coffee gets cold.",
+      "hardware": "laptop",
+      "time": "5–20 min",
+      "difficulty": "medium",
+      "why": "The environments are 2–8 dimensional and the policy network is 2 hidden layers of 64 units. RL here is CPU-bound on environment stepping, not GPU-bound.",
+      "learn": ["experience replay", "target networks", "why RL variance is brutal", "reward shaping"],
+      "code": "pip install gymnasium stable-baselines3\npython -c \"import gymnasium, stable_baselines3 as sb3; \\\nm=sb3.DQN('MlpPolicy','CartPole-v1',verbose=1).learn(50000)\"",
+      "gotcha": "Run 5 seeds and plot all of them. Single-seed RL results are noise.",
+      "links": [{ "label": "Stable-Baselines3", "url": "https://stable-baselines3.readthedocs.io/" }]
+    },
+    {
+      "id": "embeddings",
+      "title": "Fine-tune sentence embeddings",
+      "tagline": "The highest-ROI ML task that fits on a laptop.",
+      "hardware": "laptop",
+      "time": "15–45 min",
+      "difficulty": "easy",
+      "why": "A 110M-param encoder with contrastive loss on a few thousand pairs beats a general-purpose embedding model on your specific retrieval task most of the time.",
+      "learn": ["contrastive loss", "hard negative mining", "retrieval evaluation (recall@k)", "why cosine similarity is a choice not a law"],
+      "code": "pip install sentence-transformers datasets\n# MultipleNegativesRankingLoss + in-batch negatives, 1–3 epochs",
+      "gotcha": "Evaluate on retrieval metrics, not loss. Loss going down and recall@10 staying flat is completely normal.",
+      "links": [{ "label": "sentence-transformers training overview", "url": "https://www.sbert.net/docs/sentence_transformer/training_overview.html" }]
+    },
+    {
+      "id": "colab-discipline",
+      "title": "Free-GPU session discipline",
+      "tagline": "The actual skill that makes free GPUs usable.",
+      "hardware": "colab",
+      "time": "—",
+      "difficulty": "easy",
+      "why": "Free tiers kill your session on an idle timer, on a usage cap, and sometimes for no reason. Your code has to assume death at any moment.",
+      "learn": ["checkpoint/resume", "reproducibility", "experiment tracking", "how to read a training curve"],
+      "code": "# every N steps, to Google Drive:\n#   model.pt, optim.pt, scheduler.pt, epoch, rng state, best metric\n# on start: resume if the checkpoint exists\n# log to a CSV in Drive, not just stdout — the notebook dies, the Drive file doesn't",
+      "gotcha": "Save the RNG state. Without it, resumed runs silently diverge and you'll draw wrong conclusions from your ablations.",
+      "links": []
+    },
+    {
+      "id": "eval",
+      "title": "Build an eval set before you build a model",
+      "tagline": "Zero compute, biggest leverage of anything on this page.",
+      "hardware": "laptop",
+      "time": "an afternoon",
+      "difficulty": "easy",
+      "why": "50–200 hand-written examples with known-good answers tell you more about your model than any leaderboard, and they cost nothing to run.",
+      "learn": ["what 'better' means for your task", "how to spot benchmark leakage", "error analysis", "why a metric you can't compute is not a metric"],
+      "code": "# examples.jsonl: {\"input\": ..., \"expected\": ..., \"category\": ...}\n# report accuracy per category, not just overall — the overall number hides everything",
+      "gotcha": "Keep a hidden holdout you never look at while iterating. The moment you tune against your eval set, it stops being an eval set.",
+      "links": []
+    }
+  ]
+}

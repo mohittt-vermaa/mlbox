@@ -1,0 +1,13 @@
+# dependencies & caches (not part of the snapshot)
+node_modules/
+.cache/
+__pycache__/
+*.pyc
+.DS_Store
+
+# the ~70 MB of upstream tokenizer files fetched by tools/fetch_models.py —
+# regenerate with `python3 tools/fetch_models.py`, never commit them
+tools/raw/
+
+# local test artefacts
+*.log

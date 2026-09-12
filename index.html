@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mlbox — tokenizer lens, tiny playground, no-GPU recipes, live LLM prices</title>
+<meta name="description" content="Four ML tools in one page: compare real LLM tokenizers on any text, train a neural net in your browser, recipes for ML without a GPU, and current API prices. No install, no API key, no GPU.">
+<meta name="color-scheme" content="dark">
+<meta property="og:title" content="mlbox — tokenizer lens, tiny playground, no-GPU recipes, live LLM prices">
+<meta property="og:description" content="Why does the same Hindi sentence cost 5x more tokens than the English one? Paste text, see every tokenizer disagree, and see what that costs.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <h1>ml<span>box</span></h1>
+      <p>four ML tools, one page — no install, no API key, no GPU</p>
+    </div>
+    <nav role="tablist" aria-label="Tools">
+      <button id="tab-tokenizer" role="tab" aria-selected="true" aria-controls="panel-tokenizer">🧮 Tokenizer lens</button>
+      <button id="tab-playground" role="tab" aria-selected="false" aria-controls="panel-playground">🕹️ Playground</button>
+      <button id="tab-gpu" role="tab" aria-selected="false" aria-controls="panel-gpu">🐢 No-GPU recipes</button>
+      <button id="tab-prices" role="tab" aria-selected="false" aria-controls="panel-prices">💸 Prices</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="panel-tokenizer" class="panel" role="tabpanel"></section>
+  <section id="panel-playground" class="panel" role="tabpanel" hidden></section>
+  <section id="panel-gpu" class="panel" role="tabpanel" hidden></section>
+  <section id="panel-prices" class="panel" role="tabpanel" hidden></section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <b>mlbox</b> — static site, no build step, no dependencies. Runs on GitHub Pages.
+      <br>Tokenizers verified token-for-token against tiktoken 0.14 and HF tokenizers 0.23 (<code>npm test</code>).
+    </div>
+    <div>
+      Everything runs locally in your browser. Nothing is uploaded, nothing is logged, there is no backend.
+    </div>
+  </div>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+{
+  "generated": "2026-09-11",
+  "models": [
+    {
+      "id": "gemma3",
+      "label": "Gemma 3 / Gemini 2.x",
+      "org": "Google",
+      "note": "262,144 vocab \u00b7 SentencePiece-style, byte fallback",
+      "kind": "metaspace",
+      "vocab": 262144,
+      "file": "data/tok/gemma3.json",
+      "bytes": 9394647
+    },
+    {
+      "id": "o200k",
+      "label": "GPT-4o / GPT-4.1 / GPT-5 (o200k_base)",
+      "org": "OpenAI",
+      "note": "200,019 vocab \u00b7 much better at non-English",
+      "kind": "tiktoken",
+      "vocab": 199998,
+      "file": "data/tok/o200k.json",
+      "bytes": 2621402
+    },
+    {
+      "id": "qwen25",
+      "label": "Qwen2.5 / Qwen3",
+      "org": "Alibaba",
+      "note": "151,665 vocab \u00b7 strong on Chinese + Hindi",
+      "kind": "bytelevel",
+      "vocab": 151643,
+      "file": "data/tok/qwen25.json",
+      "bytes": 3329713
+    },
+    {
+      "id": "llama3",
+      "label": "Llama 3.1 / 3.3",
+      "org": "Meta",
+      "note": "128,256 vocab \u00b7 byte-level BPE",
+      "kind": "bytelevel",
+      "vocab": 128000,
+      "file": "data/tok/llama3.json",
+      "bytes": 4189646
+    },
+    {
+      "id": "deepseek",
+      "label": "DeepSeek V3 / R1",
+      "org": "DeepSeek",
+      "note": "129,280 vocab \u00b7 digit-splitting pre-tokenizer",
+      "kind": "bytelevel",
+      "vocab": 128000,
+      "file": "data/tok/deepseek.json",
+      "bytes": 2893936
+    },
+    {
+      "id": "cl100k",
+      "label": "GPT-3.5 / GPT-4 (cl100k_base)",
+      "org": "OpenAI",
+      "note": "100,277 vocab \u00b7 the classic ChatGPT tokenizer",
+      "kind": "tiktoken",
+      "vocab": 100256,
+      "file": "data/tok/cl100k.json",
+      "bytes": 1020119
+    },
+    {
+      "id": "mistral",
+      "label": "Mistral 7B / Ministral",
+      "org": "Mistral AI",
+      "note": "32,768 vocab \u00b7 small, byte fallback",
+      "kind": "metaspace",
+      "vocab": 32000,
+      "file": "data/tok/mistral.json",
+      "bytes": 897720
+    }
+  ]
+}
