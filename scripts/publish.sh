@@ -9,6 +9,13 @@
 #        GITHUB_USER=you GITHUB_TOKEN=ghp_... REPO=mlbox ./scripts/publish.sh token
 #
 # The repo name defaults to "mlbox" — override with REPO=.
+#
+# NOTE on tokens: a classic `repo`-scoped PAT (or a fine-grained PAT with only
+# Contents write) CANNOT push files under .github/workflows — GitHub rejects
+# those without the `workflow` scope. This repo therefore deploys Pages from
+# the branch (Settings → Pages → Deploy from branch → main), and the Actions
+# workflow is kept for reference at tools/deploy-pages.yml. If your token has
+# the `workflow` scope, feel free to move it back to .github/workflows/.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
