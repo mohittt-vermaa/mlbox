@@ -156,6 +156,67 @@ export function matchTrie(root, text, start) {
 }
 
 // --------------------------------------------------------------------------
+// Offset-aware variants (used by the diff view; `encode()` is untouched)
+// --------------------------------------------------------------------------
+export function splitIsolatedWithOffsets(text, re) {
+  const parts = [], offsets = [];
+  let last = 0;
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) { parts.push(text.slice(last, m.index)); offsets.push([last, m.index]); }
+    if (m[0].length === 0) { re.lastIndex++; continue; }
+    parts.push(m[0]); offsets.push([m.index, m.index + m[0].length]);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) { parts.push(text.slice(last)); offsets.push([last, text.length]); }
+  return { parts, offsets };
+}
+
+export function matchAllWithOffsets(text, re) {
+  const parts = [], offsets = [];
+  let dropped = 0, last = 0;
+  re.lastIndex = 0;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    dropped += m.index - last;
+    parts.push(m[0]);
+    offsets.push([m.index, m.index + m[0].length]);
+    last = m.index + m[0].length;
+  }
+  dropped += text.length - last;
+  return { parts, offsets, dropped };
+}
+
+/** Map byte-level pieces back onto character spans of the original part. */
+function byteCharSpans(part, pieces) {
+  const csb = new Array(part.length + 1);
+  csb[0] = 0;
+  for (let i = 0; i < part.length; i++) {
+    const c = part.charCodeAt(i);
+    const b = c < 0x80 ? 1 : c < 0x800 ? 2 : c >= 0xd800 && c <= 0xdbff ? 2 : 3;
+    csb[i + 1] = csb[i] + b;
+  }
+  const charAt = (bp) => {
+    let lo = 0, hi = part.length;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (csb[mid] <= bp) lo = mid; else hi = mid - 1; }
+    return lo;
+  };
+  const out = [];
+  let b = 0;
+  let prevEnd = 0;
+  for (const piece of pieces) {
+    const nb = b + piece.length;
+    const x = charAt(nb);
+    const end = csb[x] === nb ? x : x + 1;
+    out.push([prevEnd, end]); // chain starts so spans partition the part exactly
+    prevEnd = end;
+    b = nb;
+  }
+  return out;
+}
+
+// --------------------------------------------------------------------------
 // BPE core
 // --------------------------------------------------------------------------
 
@@ -353,25 +414,28 @@ export class Tokenizer {
 
   /** Split text on added tokens, longest match first (HF semantics). */
   _splitAddedTokens(text) {
-    if (!this.trie) return [{ text, id: null }];
+    if (!this.trie) return [{ text, id: null, start: 0, end: text.length }];
     const out = [];
     let buf = "";
+    let bufStart = 0;
     let i = 0;
+    const flush = () => {
+      if (buf) { out.push({ text: buf, id: null, start: bufStart, end: i }); buf = ""; }
+    };
     while (i < text.length) {
       const hit = matchTrie(this.trie, text, i);
       if (hit) {
-        if (buf) {
-          out.push({ text: buf, id: null });
-          buf = "";
-        }
-        out.push({ text: hit.content, id: hit.id });
+        flush();
+        out.push({ text: hit.content, id: hit.id, start: i, end: i + hit.content.length });
         i += hit.content.length;
+        bufStart = i;
       } else {
+        if (!buf) bufStart = i;
         buf += text[i];
         i += 1;
       }
     }
-    if (buf) out.push({ text: buf, id: null });
+    flush();
     return out;
   }
 
@@ -402,6 +466,75 @@ export class Tokenizer {
   count(text) {
     return this.encode(text).ids.length;
   }
+
+  /** Like encode(), but every token carries [start, end) char offsets into the
+   *  (normalised) text. Powers the diff view. Not used by count/encode paths. */
+  encodeWithOffsets(text) {
+    if (!text) return { text: "", tokens: [] };
+    const t = this._normalize(text);
+    const segs = this._splitAddedTokens(t);
+    const firstIsText = segs.length > 0 && segs[0].id === null;
+    const tokens = [];
+    for (let si = 0; si < segs.length; si++) {
+      const seg = segs[si];
+      if (seg.id !== null) {
+        tokens.push({ id: seg.id, text: seg.text, start: seg.start, end: seg.end });
+        continue;
+      }
+      const prepend = this.kind === "metaspace" && si === 0 && firstIsText;
+      // orig: char pieces with offsets into seg.text; work: byte-mapped pieces
+      let orig, work, offsets;
+      if (this.kind === "tiktoken") {
+        const r = matchAllWithOffsets(seg.text, this.patterns[0]);
+        orig = r.parts; offsets = r.offsets;
+        work = orig.map(bytesToByteChars);
+      } else if (this.kind === "bytelevel") {
+        orig = [seg.text]; offsets = [[0, seg.text.length]];
+        for (const re of this.patterns) {
+          const np = [], no = [];
+          for (let k = 0; k < orig.length; k++) {
+            const r = splitIsolatedWithOffsets(orig[k], re);
+            for (let j = 0; j < r.parts.length; j++) {
+              np.push(r.parts[j]);
+              no.push([offsets[k][0] + r.offsets[j][0], offsets[k][0] + r.offsets[j][1]]);
+            }
+          }
+          orig = np; offsets = no;
+        }
+        work = orig.map(bytesToByteChars);
+      } else {
+        let s2 = seg.text;
+        if (this.id === "mistral") {
+          s2 = s2.replace(/ /g, "\u2581");
+          if (prepend && !s2.startsWith("\u2581")) s2 = "\u2581" + s2;
+        }
+        orig = [s2]; work = [s2]; offsets = [[0, seg.text.length]];
+      }
+      for (let k = 0; k < work.length; k++) {
+        if (!work[k].length) continue;
+        const merged = bpeMerge(Array.from(work[k]), this.rank);
+        const ids = this._idsFromPieces(merged);
+        let spans;
+        if (this.kind === "metaspace") {
+          spans = [];
+          let c = 0;
+          for (const piece of merged) { spans.push([c, c + piece.length]); c += piece.length; }
+        } else {
+          spans = byteCharSpans(orig[k], merged);
+        }
+        for (let i2 = 0; i2 < ids.length && i2 < spans.length; i2++) {
+          tokens.push({
+            id: ids[i2],
+            text: this.pieceToString(merged[i2]),
+            start: seg.start + offsets[k][0] + spans[i2][0],
+            end: seg.start + offsets[k][0] + spans[i2][1],
+          });
+        }
+      }
+    }
+    return { text: t, tokens };
+  }
+
 
   /** Characters the pre-tokenizer would silently drop (should always be 0). */
   droppedChars(text) {

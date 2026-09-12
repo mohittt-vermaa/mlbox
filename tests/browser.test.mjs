@@ -72,6 +72,33 @@ check(afterType.length === 3 && afterType.every((v) => parseInt(v.replace(/,/g, 
 const tokInfo = await page.$eval(".tokinfo", (e) => e.textContent);
 check(/pieces/.test(tokInfo), "token visualiser reports pieces", tokInfo.slice(0, 60));
 
+// diff view: boundaries marked, and cl100k vs o200k genuinely disagree on Devanagari
+const diff = await page.evaluate(() => {
+  const box = document.querySelector("#panel-tokenizer .diffbox");
+  const cnt = document.querySelector("#panel-tokenizer .diffbox + .small.muted span:last-child");
+  return {
+    segs: box ? box.querySelectorAll(".segtext").length : 0,
+    marks: box ? box.querySelectorAll(".seg-a,.seg-b,.seg-both").length : 0,
+    legend: cnt ? cnt.textContent : "",
+  };
+});
+check(diff.segs >= 2 && diff.marks >= 1, "diff view renders marked boundaries",
+  `${diff.segs} segments, ${diff.marks} marked`);
+check(/only in/.test(diff.legend), "diff summary line rendered", diff.legend.slice(0, 90));
+
+// share link builds an encoded state URL
+await page.evaluate(() => {
+  Array.from(document.querySelectorAll("#panel-tokenizer .chips button"))
+    .find((b) => b.textContent.includes("share")).click();
+});
+await new Promise((r) => setTimeout(r, 200));
+const shareUrl = await page.evaluate(() => {
+  const inp = document.querySelector("#panel-tokenizer input[readonly]");
+  return inp ? inp.value : "";
+});
+check(shareUrl.includes("#tab=tokenizer&data="), "share link contains encoded state",
+  shareUrl.slice(0, 70) + "...");
+
 await page.screenshot({ path: "/tmp/pptr/shot-tokenizer.png", fullPage: true });
 
 // ---- playground ----------------------------------------------------------
@@ -114,13 +141,25 @@ await page.click("#tab-prices");
 await page.waitForSelector("#panel-prices tbody tr", { timeout: 20000 });
 const priceRows = await page.$$eval("#panel-prices table tbody tr", (r) => r.length);
 check(priceRows >= 10, "pricing table rendered", `${priceRows} models`);
-const calcRows = await page.$$eval("#panel-prices .bars .bar-row", (r) => r.length);
+const calcRows = await page.$$eval("#panel-prices .bars:not(#est-bars) .bar-row", (r) => r.length);
 check(calcRows === priceRows, "calculator priced every model", `${calcRows} bars`);
+
+// real-prompt estimator: measured vs estimated rows
+const est = await page.evaluate(() => {
+  const rows = Array.from(document.querySelectorAll("#est-bars .bar-row"));
+  return { n: rows.length, est: rows.filter((r) => r.querySelector(".name").textContent.includes("est.")).length };
+});
+check(est.n >= 10 && est.est > 0 && est.est < est.n,
+  "prompt estimator: measured + estimated rows", `${est.n} rows, ${est.est} labelled est.`);
 // sorting
 await page.evaluate(() => document.querySelector("#panel-prices th.sortable.num").click());
 const sortedFirst = await page.$eval("#panel-prices tbody tr td b", (e) => e.textContent);
 check(!!sortedFirst, "column sort works", sortedFirst);
 await page.screenshot({ path: "/tmp/pptr/shot-prices.png", fullPage: true });
+
+// ---- hash routing --------------------------------------------------------
+const hashOk = await page.evaluate(() => location.hash);
+check(hashOk.startsWith("#tab="), "hash uses tab= scheme (shareable)", hashOk);
 
 // ---- console hygiene -----------------------------------------------------
 check(errors.length === 0, "no console/page/network errors", errors.slice(0, 4).join(" | "));

@@ -1,4 +1,4 @@
-import { el, debounce, getJSON, nfmt, money, bytesLabel, bars } from "./lib.js";
+import { $, el, debounce, getJSON, nfmt, money, bytesLabel, bars } from "./lib.js";
 import { Tokenizer } from "./tokenizer.js";
 
 const PRESETS = {
@@ -29,13 +29,28 @@ const TOKEN_COLORS = [
   "rgba(255,128,149,.16)", "rgba(180,150,255,.16)", "rgba(120,220,255,.16)",
 ];
 
-export async function initTokenizerTab(root) {
+export function decodeShare(str) {
+  // URL-safe base64 -> standard, then JSON. Tolerates `+`->space mangling.
+  try {
+    let b = str.replace(/ /g, "+").replace(/-/g, "+").replace(/_/g, "/");
+    while (b.length % 4) b += "=";
+    return JSON.parse(decodeURIComponent(escape(atob(b))));
+  } catch { return null; }
+}
+export function encodeShare(obj) {
+  return btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export async function initTokenizerTab(root, params = new URLSearchParams()) {
+  const shared = params.get("data") ? decodeShare(params.get("data")) : null;
   const manifest = (await getJSON("data/models.json")).models;
   const pricing = await getJSON("data/pricing.json");
   const loaded = new Map(); // id -> Tokenizer
-  const selected = new Set(["cl100k", "o200k"]);
-  let text = PRESETS.English;
-  let viewId = "o200k";
+  const selected = new Set(shared && Array.isArray(shared.m) && shared.m.length ? shared.m : ["cl100k", "o200k"]);
+  let text = shared && typeof shared.t === "string" ? shared.t : PRESETS.English;
+  let viewId = shared && shared.v && selected.has(shared.v) ? shared.v : ([...selected].includes("o200k") ? "o200k" : [...selected][0]);
+  let diffA = null, diffB = null;
 
   // ---- build UI ---------------------------------------------------------
   const chips = el("div", { class: "chips" });
@@ -57,12 +72,26 @@ export async function initTokenizerTab(root) {
   area.value = text;
   area.addEventListener("input", () => { text = area.value; rerunDebounced(); });
 
+  const shareOut = el("input", { type: "text", readonly: "true", style: "display:none", onclick: (e) => e.currentTarget.select() });
   const presetRow = el("div", { class: "chips", style: "margin-bottom:10px" },
     ...Object.keys(PRESETS).map((k) =>
       el("button", { class: "chip", type: "button", onclick: () => { text = PRESETS[k]; area.value = text; rerun(); } }, k)
-    )
+    ),
+    el("button", {
+      class: "chip", type: "button", style: "border-style:dashed",
+      onclick: async () => {
+        const p = new URLSearchParams(location.hash.slice(1).includes("=") ? location.hash.slice(1) : "");
+        p.set("tab", "tokenizer");
+        p.set("data", encodeShare({ t: text, m: [...selected], v: viewId }));
+        const url = location.origin + location.pathname + "#" + p.toString();
+        shareOut.style.display = "";
+        shareOut.value = url;
+        try { await navigator.clipboard.writeText(url); shareOut.title = "copied!"; } catch { shareOut.select(); }
+      },
+    }, "🔗 share this comparison")
   );
 
+  let diffSelA, diffSelB, diffCount;
   const stats = el("div", { class: "statrow" });
   const compareTable = el("table");
   const compareChart = el("div", { class: "bars" });
@@ -84,7 +113,7 @@ export async function initTokenizerTab(root) {
     el("div", { class: "card", style: "margin-top:18px" },
       el("h2", {}, "Your text"),
       el("p", { class: "sub" }, "Paste anything. Or start from a preset."),
-      presetRow, area,
+      presetRow, area, shareOut,
       el("div", { style: "margin-top:14px" }, stats),
       status
     ),
@@ -107,6 +136,21 @@ export async function initTokenizerTab(root) {
         el("span", { class: "muted small", style: "align-self:center" }, "Showing:")
       )),
       tokensBox, tokenInfo
+    ),
+    el("div", { class: "card", style: "margin-top:18px" },
+      el("h2", {}, "Where two tokenizers disagree"),
+      el("p", { class: "sub" },
+        "The same text with each token boundary marked. A tick means “a token starts here”. Positions where only one model starts a token are highlighted — that's exactly where your bill diverges."),
+      el("div", { class: "chips", style: "margin-bottom:12px" },
+        el("span", { class: "muted small", style: "align-self:center" }, "A:"), (diffSelA = el("select", { style: "width:auto" })),
+        el("span", { class: "muted small", style: "align-self:center" }, "vs B:"), (diffSelB = el("select", { style: "width:auto" }))
+      ),
+      el("div", { class: "diffbox" }),
+      el("div", { class: "small muted", style: "margin-top:10px" },
+        "Legend: ", el("span", { class: "seg both" }, "┃ both"), "  ",
+        el("span", { class: "seg a" }, "┃ only A"), "  ", el("span", { class: "seg b" }, "┃ only B"),
+        "  ·  ", (diffCount = el("span", {}))
+      )
     ),
     el("h2", { class: "section" }, "Why your language is expensive"),
     el("p", { class: "section-sub" },
@@ -236,6 +280,8 @@ export async function initTokenizerTab(root) {
     // visualiser
     renderTokens(results.find((r) => r.id === viewId) || results[0]);
     renderViewChips(results);
+    renderDiffOptions(results);
+    renderDiff(results);
     renderLangMatrix(results);
 
     const totalMs = results.reduce((a, r) => a + r.ms, 0);
@@ -310,6 +356,47 @@ export async function initTokenizerTab(root) {
     langTable.append(el("table", {}, el("thead", {}, head), tbody),
       el("p", { class: "muted small", style: "margin-top:10px" },
         "One sentence, hand-translated into each language, so the row is an indicative comparison rather than a controlled experiment. Byte counts are shown because a script's utf-8 size explains a lot of — but not all of — the difference."));
+  }
+
+  function renderDiffOptions(results) {
+    const ids = results.map((r) => r.id);
+    if (!diffA || !ids.includes(diffA)) diffA = ids.includes("o200k") ? "o200k" : ids[0];
+    if (!diffB || !ids.includes(diffB) || diffB === diffA) diffB = ids.includes("cl100k") && "cl100k" !== diffA ? "cl100k" : ids.find((i) => i !== diffA);
+    for (const [sel, val, set] of [[diffSelA, diffA, (v) => (diffA = v)], [diffSelB, diffB, (v) => (diffB = v)]]) {
+      sel.textContent = "";
+      for (const r of results) sel.append(el("option", { value: r.id, selected: r.id === val ? "true" : null }, shortName(r.tok.label)));
+      sel.onchange = () => { set(sel.value); renderDiff(results); };
+    }
+  }
+
+  function renderDiff(results) {
+    const box = $(".diffbox", root);
+    box.textContent = "";
+    const A = results.find((r) => r.id === diffA);
+    const B = results.find((r) => r.id === diffB);
+    if (!A || !B || A === B) { diffCount.textContent = "pick two different models"; return; }
+    const startsOf = (r) => {
+      const set = new Set();
+      for (const tok of r.tok.encodeWithOffsets(text).tokens) {
+        const st = Math.max(0, Math.min(tok.start, text.length));
+        if (st > 0) set.add(st);
+      }
+      return set;
+    };
+    const sa = startsOf(A), sb = startsOf(B);
+    const cuts = [...new Set([...sa, ...sb])].filter((c) => c > 0 && c <= text.length).sort((a, b) => a - b);
+    let pos = 0;
+    for (const c of [...cuts, text.length]) {
+      if (c > pos) {
+        const a = sa.has(pos), b = sb.has(pos);
+        const mark = pos === 0 ? "" : a && b ? "both" : a ? "a" : b ? "b" : "";
+        box.append(el("span", { class: "segtext" + (mark ? " seg-" + mark : "") }, text.slice(pos, c)));
+      }
+      pos = c;
+    }
+    const onlyA = [...sa].filter((x) => !sb.has(x)).length;
+    const onlyB = [...sb].filter((x) => !sa.has(x)).length;
+    diffCount.textContent = `${shortName(A.tok.label)}: ${A.ids.length} tokens · ${shortName(B.tok.label)}: ${B.ids.length} tokens · boundaries only in A: ${onlyA}, only in B: ${onlyB}`;
   }
 
   const rerunDebounced = debounce(rerun, 250);

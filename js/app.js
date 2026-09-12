@@ -13,7 +13,21 @@ const TABS = {
 
 const started = new Set();
 
+/** Hash scheme: `#tab=prices&data=...` (bare `#prices` also accepted for old links). */
+export function hashParams() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (!h) return new URLSearchParams();
+  if (h.includes("=")) return new URLSearchParams(h);
+  return new URLSearchParams({ tab: h });
+}
+
+export function setHash(params) {
+  history.replaceState(null, "", "#" + params.toString());
+}
+
 async function show(id) {
+  const params = hashParams();
+  params.set("tab", id);
   for (const [k, t] of Object.entries(TABS)) {
     const panel = $(`#panel-${k}`);
     const btn = $(`#tab-${k}`);
@@ -24,7 +38,7 @@ async function show(id) {
       started.add(k);
       btn.disabled = true;
       try {
-        await t.mount(panel);
+        await t.mount(panel, params);
       } catch (e) {
         console.error(e);
         panel.append(Object.assign(document.createElement("div"), {
@@ -36,12 +50,12 @@ async function show(id) {
       }
     }
   }
-  if (location.hash.slice(1) !== id) history.replaceState(null, "", "#" + id);
+  setHash(params);
 }
 
 for (const k of Object.keys(TABS)) {
   $(`#tab-${k}`).addEventListener("click", () => show(k));
 }
 
-const initial = TABS[location.hash.slice(1)] ? location.hash.slice(1) : "tokenizer";
+const initial = TABS[hashParams().get("tab")] ? hashParams().get("tab") : "tokenizer";
 show(initial);
