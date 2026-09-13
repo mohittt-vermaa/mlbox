@@ -12,3 +12,7 @@ tools/raw/
 # local test artefacts
 *.log
 /node_modules
+
+# promo video render outputs (regenerate with promo/generate_video.py)
+promo/renders/
+promo/assets/
