@@ -12,3 +12,11 @@ tools/raw/
 # local test artefacts
 *.log
 /node_modules
+
+# promo render intermediates are ignored, but the final video + filmstrip
+# are committed so people can grab the video straight from the repo.
+# regenerate everything with: python3 promo/generate_video.py
+promo/renders/*
+!promo/renders/mlbox_promo_30s.mp4
+!promo/renders/filmstrip.jpg
+promo/assets/
