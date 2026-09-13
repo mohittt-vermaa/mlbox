@@ -13,6 +13,10 @@ tools/raw/
 *.log
 /node_modules
 
-# promo video render outputs (regenerate with promo/generate_video.py)
-promo/renders/
+# promo render intermediates are ignored, but the final video + filmstrip
+# are committed so people can grab the video straight from the repo.
+# regenerate everything with: python3 promo/generate_video.py
+promo/renders/*
+!promo/renders/mlbox_promo_30s.mp4
+!promo/renders/filmstrip.jpg
 promo/assets/
