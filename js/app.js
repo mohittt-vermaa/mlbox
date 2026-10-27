@@ -32,6 +32,7 @@ async function show(id) {
   for (const [k, t] of Object.entries(TABS)) {
     const panel = $(`#panel-${k}`);
     const btn = $(`#tab-${k}`);
+    if (!panel || !btn) continue; // stripped by the lite (APK) build
     const on = k === id;
     panel.hidden = !on;
     btn.setAttribute("aria-selected", on ? "true" : "false");
@@ -54,12 +55,16 @@ async function show(id) {
   setHash(params);
 }
 
+const has = (k) => Boolean(k && TABS[k] && $(`#panel-${k}`));
+
 for (const k of Object.keys(TABS)) {
-  $(`#tab-${k}`).addEventListener("click", () => show(k));
+  if (has(k)) $(`#tab-${k}`).addEventListener("click", () => show(k));
 }
 
 // Priority: the hash (share links win) > whatever tab you last had open > tokenizer.
+// A saved tab the current build doesn't ship (e.g. Playground remembered on the
+// web build, then opened in the lite APK) falls through to the tokenizer.
 const hashTab = hashParams().get("tab");
 const savedTab = store.get("tab");
-const initial = TABS[hashTab] ? hashTab : TABS[savedTab] ? savedTab : "tokenizer";
+const initial = has(hashTab) ? hashTab : has(savedTab) ? savedTab : "tokenizer";
 show(initial);

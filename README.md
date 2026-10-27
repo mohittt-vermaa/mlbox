@@ -51,6 +51,11 @@ multiplier, and almost nobody looks at it. Now you can, in one link.
 
 ## New in v0.2.0
 
+- **An Android app.** Grab `mlbox-v0.2.0-lite-universal.apk` from
+  [Releases](https://github.com/mohittt-vermaa/mlbox/releases), open it, allow installs from that
+  source — a 9.7 MB offline package, no Play Store, no account. It is the same static site in a
+  `WebView`, minus the Playground tab and with one tokenizer loaded on a cold start instead of
+  two (see [The Android build](#the-android-build)).
 - **A desktop app.** Grab `mlbox-v0.2.0-win32-x64.zip` from
   [Releases](https://github.com/mohittt-vermaa/mlbox/releases), unzip it, double-click
   `mlbox.exe` — all four tools, offline, no browser tab needed. Build it yourself with
@@ -108,6 +113,7 @@ There is nothing to compile. Any of these gets you a running mlbox in under a mi
 | You have… | Do this | Works on |
 |---|---|---|
 | Windows (or macOS/Linux desktop) | Download the zip from [Releases](https://github.com/mohittt-vermaa/mlbox/releases), unzip, run `mlbox.exe` | Windows 10/11 x64 — other platforms: `node scripts/build-desktop.mjs linux\|darwin` |
+| An Android phone | Download `mlbox-v0.2.0-lite-universal.apk` from [Releases](https://github.com/mohittt-vermaa/mlbox/releases) and open it (allow that one source) | Android 8.0+ (API 26), works fully offline |
 | Nothing to install | Open <https://mohittt-vermaa.github.io/mlbox/> | every device with a browser |
 | Python 3 (macOS, most Linux) | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && python3 -m http.server 8000` → open `http://localhost:8000` | macOS · Linux · Windows (with Python) |
 | Python 2 | `python -m SimpleHTTPServer 8000` | older systems |
@@ -158,6 +164,8 @@ data/pricing.json   13 models, per-row source URL + check date
 data/recipes.json   the no-GPU project list
 electron/           desktop shell: loopback static server + one window
 scripts/build-desktop.mjs   packages the Windows/Linux/macOS desktop build
+android/            the Android app: manifest, one WebView Activity, theme, signing key
+scripts/build-apk.mjs       aapt2 + javac + d8 + apksigner (no Gradle) → dist/*.apk
 tests/              engine-vs-Rust, convergence, full browser e2e
 tools/              python scripts to regenerate all data from primary sources
 ```
@@ -174,6 +182,34 @@ cross-compiler. The entry point is a real `PE32+ (GUI) x86-64` executable named 
 the shell (`electron/main.cjs`) serves the folder over loopback HTTP and opens one window —
 that is the whole desktop app. The same static files run on GitHub Pages, so the two builds
 cannot drift apart.
+
+### The Android build
+
+```bash
+bash .sdk/setup.sh      # once: JDK 17 + Android SDK into ./.sdk — no root, ~950 MB
+npm run build:apk       # → dist/mlbox-v0.2.0-lite-universal.apk + SHA256SUMS.txt
+```
+
+No Gradle and no Android Studio: `scripts/build-apk.mjs` links the manifest, resources and
+assets with `aapt2`, compiles the single `Activity` with `javac`, converts it with `d8`, then
+`zipalign`s and `signs` with `apksigner`. The result is `com.mlbox.app`, minSdk 26, 9.7 MB,
+pure Java + web assets (no native code), and it verifies with `apksigner verify`.
+
+The app is one `WebView` (`android/src/com/mlbox/app/MainActivity.java`) that answers every
+request for `https://mlbox.app/` out of its own assets through `shouldInterceptRequest`, so the
+page runs on a real https origin and `fetch`, `localStorage` and ES modules behave exactly as
+they do in a browser — with nothing ever leaving the phone. External links open in the system
+browser; the back button walks the tab history.
+
+It ships the **lite** build of the site, generated at build time (the repo's `index.html` is
+untouched, and the build fails loudly if the patches it applies stop matching): the Playground
+tag — the only tab with a live training loop — is stripped, and a cold start loads one
+tokenizer (~1 MB) instead of two (~3.6 MB); the other six are one tap away. Everything else
+(tokenizer lens, boundary diff, share links, prices, cache pricing, recipes, persistence) is
+identical to the web build.
+
+The signing key (`android/mlbox-release.jks`, password in the build script) is committed on
+purpose: future releases then install as upgrades instead of forcing an uninstall.
 
 Design decisions, in one line each:
 

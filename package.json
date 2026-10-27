@@ -9,6 +9,7 @@
     "serve": "python3 -m http.server 8000 --bind 0.0.0.0",
     "build:exe": "node scripts/build-desktop.mjs win32",
     "build:desktop": "node scripts/build-desktop.mjs",
+    "build:apk": "node scripts/build-apk.mjs",
     "test": "npm run test:tokenizer && npm run test:playground",
     "test:tokenizer": "node tests/tokenizer.test.mjs",
     "test:playground": "node tests/playground.test.mjs",

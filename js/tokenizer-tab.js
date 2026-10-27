@@ -53,7 +53,12 @@ export async function initTokenizerTab(root, params = new URLSearchParams()) {
   const saved = shared ? null : store.get("tok");
   const fromShare = known(shared && shared.m);
   const fromStore = known(saved && saved.m);
-  const chosen = fromShare.length ? fromShare : fromStore.length ? fromStore : ["cl100k", "o200k"];
+  // The lite build (Android APK) opens with one model rather than two, so a cold
+  // start on mobile pulls ~1 MB of vocabulary instead of ~3.6 MB. Every other
+  // model is still one tap away.
+  const lite = document.documentElement.dataset.build === "lite";
+  const chosen = fromShare.length ? fromShare : fromStore.length ? fromStore
+    : lite ? ["cl100k"] : ["cl100k", "o200k"];
   const selected = new Set(chosen);
   const pickView = (v) => (typeof v === "string" && selected.has(v) ? v : null);
   let text = shared && typeof shared.t === "string" ? shared.t

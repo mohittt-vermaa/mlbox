@@ -16,6 +16,9 @@ tools/raw/
 # desktop packages (build with: npm run build:exe)
 dist/
 
+# the JDK + Android SDK that scripts/build-apk.mjs installs (bash .sdk/setup.sh)
+.sdk/
+
 # promo render intermediates are ignored, but the final video + filmstrip
 # are committed so people can grab the video straight from the repo.
 # regenerate everything with: python3 promo/generate_video.py
