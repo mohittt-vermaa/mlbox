@@ -27,6 +27,22 @@ export function debounce(fn, ms) {
   };
 }
 
+// localStorage persistence — namespaced, JSON-encoded, and it never throws:
+// private modes, file:// origins and full quota disks all just no-op.
+const STORE_NS = "mlbox:v1:";
+export const store = {
+  get(key, fallback = null) {
+    try {
+      const raw = localStorage.getItem(STORE_NS + key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch { return fallback; }
+  },
+  set(key, value) {
+    try { localStorage.setItem(STORE_NS + key, JSON.stringify(value)); }
+    catch { /* quota or storage disabled — working state simply isn't remembered */ }
+  },
+};
+
 const jsonCache = new Map();
 export async function getJSON(url) {
   if (!jsonCache.has(url)) {

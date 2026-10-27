@@ -180,11 +180,12 @@ export class MLP {
 // --------------------------------------------------------------------------
 // UI
 // --------------------------------------------------------------------------
-import { $, el } from "./lib.js";
+import { $, el, store } from "./lib.js";
 
 export function initPlaygroundTab(root) {
+  const savedDs = store.get("pg.dataset");
   const state = {
-    dataset: "spiral",
+    dataset: DATASETS[savedDs] ? savedDs : "spiral",
     points: [],
     net: null,
     running: true,
@@ -229,6 +230,7 @@ export function initPlaygroundTab(root) {
       class: "chip", type: "button", "aria-pressed": id === state.dataset ? "true" : "false",
       onclick: (e) => {
         state.dataset = id;
+        store.set("pg.dataset", id);
         dsChips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
         e.currentTarget.setAttribute("aria-pressed", "true");
         rebuild();

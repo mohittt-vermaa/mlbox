@@ -1,9 +1,10 @@
-import { el, getJSON } from "./lib.js";
+import { el, getJSON, store } from "./lib.js";
 
 export async function initGpuTab(root) {
   const data = await getJSON("data/recipes.json");
   const list = el("div", { class: "grid" });
-  let filter = "all";
+  const savedFilter = store.get("gpu.filter");
+  let filter = ["all", ...data.tiers.map((t) => t.id)].includes(savedFilter) ? savedFilter : "all";
 
   const chips = el("div", { class: "chips", style: "margin-bottom:16px" });
   const filters = [["all", "everything"], ...data.tiers.map((t) => [t.id, t.name])];
@@ -12,6 +13,7 @@ export async function initGpuTab(root) {
       class: "chip", type: "button", "aria-pressed": id === filter ? "true" : "false",
       onclick: (e) => {
         filter = id;
+        store.set("gpu.filter", id);
         chips.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", "false"));
         e.currentTarget.setAttribute("aria-pressed", "true");
         render();

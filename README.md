@@ -49,7 +49,21 @@ multiplier, and almost nobody looks at it. Now you can, in one link.
 
 ---
 
-## New in this release
+## New in v0.2.0
+
+- **A desktop app.** Grab `mlbox-v0.2.0-win32-x64.zip` from
+  [Releases](https://github.com/mohittt-vermaa/mlbox/releases), unzip it, double-click
+  `mlbox.exe` — all four tools, offline, no browser tab needed. Build it yourself with
+  `npm run build:exe` (Windows) or `node scripts/build-desktop.mjs linux|darwin`.
+- **Your session is remembered.** Text, selected tokenizers, diff pair, calculator inputs,
+  estimator prompt, recipe filter and the tab you were on all persist in `localStorage`, so
+  closing the app (or the tab) and coming back restores your working state. A share link still
+  wins when you open one.
+- **Prompt-cache pricing in the calculator.** Set the share of input tokens served from cache
+  and every row is repriced with that provider's own cached-input rate; rows without one stay
+  at full price rather than being given an invented discount.
+
+## From v0.1.0
 
 - **Tokenizer boundary diff.** Pick any two models: the same text is rendered with every token
   start marked, and positions where only one model splits are highlighted — the exact places
@@ -93,6 +107,7 @@ There is nothing to compile. Any of these gets you a running mlbox in under a mi
 
 | You have… | Do this | Works on |
 |---|---|---|
+| Windows (or macOS/Linux desktop) | Download the zip from [Releases](https://github.com/mohittt-vermaa/mlbox/releases), unzip, run `mlbox.exe` | Windows 10/11 x64 — other platforms: `node scripts/build-desktop.mjs linux\|darwin` |
 | Nothing to install | Open <https://mohittt-vermaa.github.io/mlbox/> | every device with a browser |
 | Python 3 (macOS, most Linux) | `git clone https://github.com/mohittt-vermaa/mlbox && cd mlbox && python3 -m http.server 8000` → open `http://localhost:8000` | macOS · Linux · Windows (with Python) |
 | Python 2 | `python -m SimpleHTTPServer 8000` | older systems |
@@ -134,16 +149,31 @@ There is no build step anywhere.
 ```
 index.html          single-page shell, 4 tabs
 css/styles.css      dark UI, no framework
-js/lib.js           tiny DOM/chart helpers (no chart library)
+js/lib.js           tiny DOM/chart helpers, no chart library, + the localStorage store
 js/tokenizer.js     the BPE engine (tiktoken + byte-level + metaspace, added tokens, offsets)
 js/*-tab.js         one module per tab; lazy-mounted on first visit
 data/models.json    manifest (which tokenizers exist, vocab file per model)
 data/tok/*.json     vocab bundles, loaded on demand and cached (~24 MB total)
 data/pricing.json   13 models, per-row source URL + check date
 data/recipes.json   the no-GPU project list
+electron/           desktop shell: loopback static server + one window
+scripts/build-desktop.mjs   packages the Windows/Linux/macOS desktop build
 tests/              engine-vs-Rust, convergence, full browser e2e
 tools/              python scripts to regenerate all data from primary sources
 ```
+
+### The desktop build
+
+```bash
+npm run build:exe        # → dist/mlbox-v0.2.0-win32-x64.zip + SHA256SUMS.txt
+```
+
+The script stages the app files and unpacks the **official prebuilt Electron runtime** over
+them, so a Windows `.exe` can be built on Linux or macOS with no wine, no Windows SDK and no
+cross-compiler. The entry point is a real `PE32+ (GUI) x86-64` executable named `mlbox.exe`;
+the shell (`electron/main.cjs`) serves the folder over loopback HTTP and opens one window —
+that is the whole desktop app. The same static files run on GitHub Pages, so the two builds
+cannot drift apart.
 
 Design decisions, in one line each:
 
@@ -173,8 +203,8 @@ python3 tools/gen_reference.py      # rebuild the ground-truth corpus for tests
 ## Roadmap
 
 - More tokenizers (Claude's BPE, Cohere Command).
-- Cache-hit pricing scenarios in the estimator (cached-input multipliers differ by provider).
-- `localStorage` persistence of your working text and selection.
+- Cache-hit scenarios in the real-prompt estimator (the workload calculator already has one).
+- Signed Windows installer / start-menu shortcut instead of a plain zip.
 
 ## License & data
 

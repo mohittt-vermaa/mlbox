@@ -1,4 +1,4 @@
-import { $ } from "./lib.js";
+import { $, store } from "./lib.js";
 import { initTokenizerTab } from "./tokenizer-tab.js";
 import { initPlaygroundTab } from "./playground-tab.js";
 import { initGpuTab } from "./gpu-tab.js";
@@ -28,6 +28,7 @@ export function setHash(params) {
 async function show(id) {
   const params = hashParams();
   params.set("tab", id);
+  store.set("tab", id);
   for (const [k, t] of Object.entries(TABS)) {
     const panel = $(`#panel-${k}`);
     const btn = $(`#tab-${k}`);
@@ -57,5 +58,8 @@ for (const k of Object.keys(TABS)) {
   $(`#tab-${k}`).addEventListener("click", () => show(k));
 }
 
-const initial = TABS[hashParams().get("tab")] ? hashParams().get("tab") : "tokenizer";
+// Priority: the hash (share links win) > whatever tab you last had open > tokenizer.
+const hashTab = hashParams().get("tab");
+const savedTab = store.get("tab");
+const initial = TABS[hashTab] ? hashTab : TABS[savedTab] ? savedTab : "tokenizer";
 show(initial);

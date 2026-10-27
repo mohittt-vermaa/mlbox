@@ -1,11 +1,14 @@
 {
   "name": "mlbox",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
+  "main": "electron/main.cjs",
   "description": "Four ML tools in one static page: tokenizer lens, browser playground, no-GPU recipes, and current LLM prices. No GPU, no API key, no install, no build step.",
   "scripts": {
     "serve": "python3 -m http.server 8000 --bind 0.0.0.0",
+    "build:exe": "node scripts/build-desktop.mjs win32",
+    "build:desktop": "node scripts/build-desktop.mjs",
     "test": "npm run test:tokenizer && npm run test:playground",
     "test:tokenizer": "node tests/tokenizer.test.mjs",
     "test:playground": "node tests/playground.test.mjs",

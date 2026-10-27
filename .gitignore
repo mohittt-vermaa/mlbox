@@ -13,6 +13,9 @@ tools/raw/
 *.log
 /node_modules
 
+# desktop packages (build with: npm run build:exe)
+dist/
+
 # promo render intermediates are ignored, but the final video + filmstrip
 # are committed so people can grab the video straight from the repo.
 # regenerate everything with: python3 promo/generate_video.py

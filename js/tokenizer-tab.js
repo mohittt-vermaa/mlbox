@@ -1,4 +1,4 @@
-import { $, el, debounce, getJSON, nfmt, money, bytesLabel, bars } from "./lib.js";
+import { $, el, debounce, getJSON, nfmt, money, bytesLabel, bars, store } from "./lib.js";
 import { Tokenizer } from "./tokenizer.js";
 
 const PRESETS = {
@@ -47,10 +47,32 @@ export async function initTokenizerTab(root, params = new URLSearchParams()) {
   const manifest = (await getJSON("data/models.json")).models;
   const pricing = await getJSON("data/pricing.json");
   const loaded = new Map(); // id -> Tokenizer
-  const selected = new Set(shared && Array.isArray(shared.m) && shared.m.length ? shared.m : ["cl100k", "o200k"]);
-  let text = shared && typeof shared.t === "string" ? shared.t : PRESETS.English;
-  let viewId = shared && shared.v && selected.has(shared.v) ? shared.v : ([...selected].includes("o200k") ? "o200k" : [...selected][0]);
-  let diffA = null, diffB = null;
+
+  // Priority: share link > your last working state (localStorage) > defaults.
+  const known = (ids) => (Array.isArray(ids) ? ids.filter((id) => manifest.some((m) => m.id === id)) : []);
+  const saved = shared ? null : store.get("tok");
+  const fromShare = known(shared && shared.m);
+  const fromStore = known(saved && saved.m);
+  const chosen = fromShare.length ? fromShare : fromStore.length ? fromStore : ["cl100k", "o200k"];
+  const selected = new Set(chosen);
+  const pickView = (v) => (typeof v === "string" && selected.has(v) ? v : null);
+  let text = shared && typeof shared.t === "string" ? shared.t
+    : saved && typeof saved.t === "string" ? saved.t
+    : PRESETS.English;
+  let viewId = pickView(shared && shared.v) || pickView(saved && saved.v)
+    || (chosen.includes("o200k") ? "o200k" : chosen[0]);
+  let diffA = !shared && saved && selected.has(saved.a) ? saved.a : null;
+  let diffB = !shared && saved && selected.has(saved.b) ? saved.b : null;
+
+  // Remembered on every re-run so a refresh (or closing the desktop app) keeps
+  // your text, model set, view and diff pair. Long inputs are dropped rather
+  // than blowing the ~5 MB localStorage quota.
+  function persist() {
+    store.set("tok", {
+      t: text.length <= 200000 ? text : null,
+      m: [...selected], v: viewId, a: diffA, b: diffB,
+    });
+  }
 
   // ---- build UI ---------------------------------------------------------
   const chips = el("div", { class: "chips" });
@@ -217,6 +239,7 @@ export async function initTokenizerTab(root, params = new URLSearchParams()) {
       compareTable.textContent = "";
       tokensBox.textContent = "";
       langTable.textContent = "";
+      persist();
       status.append(el("div", { class: "muted small" }, "Select at least one tokenizer."));
       return;
     }
@@ -286,6 +309,7 @@ export async function initTokenizerTab(root, params = new URLSearchParams()) {
 
     const totalMs = results.reduce((a, r) => a + r.ms, 0);
     status.textContent = `${nfmt(chars)} chars → tokenised by ${results.length} model(s) in ${totalMs.toFixed(0)} ms, locally.`;
+    persist();
   }
 
   function shortName(label) { return label.replace(/ \(.*/, ""); }
