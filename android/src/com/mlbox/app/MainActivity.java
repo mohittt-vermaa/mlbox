@@ -44,15 +44,30 @@ public class MainActivity extends Activity {
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);      // session persistence (localStorage)
+        s.setDomStorageEnabled(true);
         s.setAllowFileAccess(false);
         s.setAllowContentAccess(false);
         s.setMediaPlaybackRequiresUserGesture(true);
+        // Allow mixed content for local assets served over https origin.
+        // This is required because the WebView loads the main document via
+        // loadDataWithBaseURL("https://mlbox.app", ...) and all sub-resources
+        // (JS, CSS, JSON, fonts) are intercepted and served from APK assets.
+        // No network requests ever leave the device — the INTERNET permission
+        // is declared only because the HTTPS origin requires it for fetch()
+        // and localStorage to work. MIXED_CONTENT_COMPATIBILITY_MODE would
+        // block some legitimate same-origin asset loads, so ALWAYS_ALLOW is used.
+        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         web.setWebViewClient(new WebViewClient() {
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 return serve(req.getUrl());
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                return serve(Uri.parse(url));
             }
 
             @Override
@@ -65,10 +80,32 @@ public class MainActivity extends Activity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
                 return handOff(req.getUrl());
             }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                // If the main document fails, retry with loadDataWithBaseURL
+                if (failingUrl != null && failingUrl.startsWith(APP_ORIGIN) && errorCode == WebViewClient.ERROR_CONNECT) {
+                    loadFromAssets();
+                }
+            }
         });
 
         setContentView(web);
-        web.loadUrl(APP_ORIGIN);
+        loadFromAssets();
+    }
+
+    private void loadFromAssets() {
+        try {
+            InputStream in = getAssets().open("index.html");
+            byte[] buffer = new byte[in.available()];
+            in.read(buffer);
+            in.close();
+            String html = new String(buffer, "UTF-8");
+            // Load with HTTPS origin so localStorage, fetch, ES modules work
+            web.loadDataWithBaseURL(APP_ORIGIN, html, "text/html", "UTF-8", null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     /** In-app URLs keep loading here; anything else goes to the system browser. */
@@ -115,7 +152,7 @@ public class MainActivity extends Activity {
     private static String mimeFor(String path) {
         String p = path.toLowerCase(java.util.Locale.ROOT);
         if (p.endsWith(".html")) return "text/html";
-        if (p.endsWith(".js") || p.endsWith(".mjs")) return "text/javascript";
+        if (p.endsWith(".js") || p.endsWith(".mjs")) return "application/javascript";
         if (p.endsWith(".css")) return "text/css";
         if (p.endsWith(".json")) return "application/json";
         if (p.endsWith(".svg")) return "image/svg+xml";

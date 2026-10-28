@@ -20,10 +20,11 @@
       <p>four ML tools, one page — no install, no API key, no GPU</p>
     </div>
     <nav role="tablist" aria-label="Tools">
-      <button id="tab-tokenizer" role="tab" aria-selected="true" aria-controls="panel-tokenizer">🧮 Tokenizer lens</button>
-      <button id="tab-playground" role="tab" aria-selected="false" aria-controls="panel-playground">🕹️ Playground</button>
-      <button id="tab-gpu" role="tab" aria-selected="false" aria-controls="panel-gpu">🐢 No-GPU recipes</button>
-      <button id="tab-prices" role="tab" aria-selected="false" aria-controls="panel-prices">💸 Prices</button>
+      <button id="tab-tokenizer" role="tab" aria-selected="true" aria-controls="panel-tokenizer"><span>1</span> 🧮 Tokenizer lens</button>
+      <button id="tab-playground" role="tab" aria-selected="false" aria-controls="panel-playground"><span>2</span> 🕹️ Playground</button>
+      <button id="tab-gpu" role="tab" aria-selected="false" aria-controls="panel-gpu"><span>3</span> 🐢 No-GPU recipes</button>
+      <button id="tab-prices" role="tab" aria-selected="false" aria-controls="panel-prices"><span>4</span> 💸 Prices</button>
+      <button id="tab-guide" role="tab" aria-selected="false" aria-controls="panel-guide"><span>G</span> 📖 Guide</button>
     </nav>
   </div>
 </header>
@@ -33,6 +34,7 @@
   <section id="panel-playground" class="panel" role="tabpanel" hidden></section>
   <section id="panel-gpu" class="panel" role="tabpanel" hidden></section>
   <section id="panel-prices" class="panel" role="tabpanel" hidden></section>
+  <section id="panel-guide" class="panel" role="tabpanel" hidden></section>
 </main>
 
 <footer>
@@ -45,6 +47,7 @@
     </div>
     <div>
       Everything runs locally in your browser. Nothing is uploaded, nothing is logged, there is no backend.
+      <br><span class="muted" style="font-size:11.5px;">Shortcuts: <kbd style="font-family:var(--mono);font-size:11px;padding:1px 6px;background:var(--bg);border:1px solid var(--line);border-radius:4px;">1–4</kbd> tabs · <kbd style="font-family:var(--mono);font-size:11px;padding:1px 6px;background:var(--bg);border:1px solid var(--line);border-radius:4px;">G</kbd> guide · <kbd style="font-family:var(--mono);font-size:11px;padding:1px 6px;background:var(--bg);border:1px solid var(--line);border-radius:4px;">Ctrl+Enter</kbd> run</span>
     </div>
   </div>
 </footer>

@@ -3,12 +3,14 @@ import { initTokenizerTab } from "./tokenizer-tab.js";
 import { initPlaygroundTab } from "./playground-tab.js";
 import { initGpuTab } from "./gpu-tab.js";
 import { initPricesTab } from "./prices-tab.js";
+import { initGuideTab } from "./guide-tab.js";
 
 const TABS = {
   tokenizer: { mount: initTokenizerTab, label: "Tokenizer" },
   playground: { mount: initPlaygroundTab, label: "Playground" },
   gpu: { mount: initGpuTab, label: "No-GPU recipes" },
   prices: { mount: initPricesTab, label: "Prices" },
+  guide: { mount: initGuideTab, label: "Guide" },
 };
 
 const started = new Set();
@@ -68,3 +70,20 @@ const hashTab = hashParams().get("tab");
 const savedTab = store.get("tab");
 const initial = has(hashTab) ? hashTab : has(savedTab) ? savedTab : "tokenizer";
 show(initial);
+
+// Keyboard shortcuts
+const keyMap = { "1": "tokenizer", "2": "playground", "3": "gpu", "4": "prices", "g": "guide", "G": "guide" };
+document.addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+  if (e.ctrlKey || e.metaKey) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const activeTab = document.querySelector("nav button[aria-selected='true']");
+      if (activeTab?.id === "tab-playground") document.getElementById("train-btn")?.click();
+      else if (activeTab?.id === "tab-tokenizer") document.getElementById("tok-btn")?.click();
+    }
+    return;
+  }
+  const tab = keyMap[e.key];
+  if (tab && has(tab)) show(tab);
+});

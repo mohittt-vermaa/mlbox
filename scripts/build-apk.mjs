@@ -30,6 +30,7 @@ const ANDROID_JAR = path.join(SDK, "platforms", "android-34", "android.jar");
 const JAVA_HOME = path.join(SDK, "jdk");
 const JBIN = path.join(JAVA_HOME, "bin");
 const KEYSTORE = path.join(ROOT, "android", "mlbox-release.jks");
+const KEYSTORE_PASS = process.env.MLBOX_KEYSTORE_PASS || "mlbox-android"; // default for CI/reproducible builds
 const VERSION = JSON.parse(readFileSync(path.join(ROOT, "package.json"), "utf8")).version;
 const APK = path.join(OUT, `mlbox-v${VERSION}-lite-universal.apk`);
 
@@ -81,7 +82,7 @@ const patch = (from, to) => {
 patch("<html lang=\"en\">", "<html lang=\"en\" data-build=\"lite\">");
 // the Playground tab is the only CPU-hungry one (live training loop) — drop it
 patch(
-  "      <button id=\"tab-playground\" role=\"tab\" aria-selected=\"false\" aria-controls=\"panel-playground\">🕹️ Playground</button>\n",
+  "      <button id=\"tab-playground\" role=\"tab\" aria-selected=\"false\" aria-controls=\"panel-playground\"><span>2</span> 🕹️ Playground</button>\n",
   ""
 );
 patch(
@@ -159,12 +160,24 @@ run(path.join(JBIN, "javac"), [
   "-d", classesDir,
   javaFile,
 ]);
+// collect all .class files under classesDir
+import { readdirSync } from "node:fs";
+const classFiles = [];
+function collectClassFiles(dir) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) collectClassFiles(full);
+    else if (entry.name.endsWith(".class")) classFiles.push(full);
+  }
+}
+collectClassFiles(classesDir);
+
 run(path.join(BT, "d8"), [
   "--release",
   "--lib", ANDROID_JAR,
   "--min-api", "26",
   "--output", dexDir,
-  path.join(classesDir, "com", "mlbox", "app", "MainActivity.class"),
+  ...classFiles,
 ]);
 ok("MainActivity.class → classes.dex");
 
@@ -191,7 +204,7 @@ if (!existsSync(KEYSTORE)) {
     "-alias", "mlbox",
     "-keyalg", "RSA", "-keysize", "2048",
     "-validity", "10000",
-    "-storepass", "mlbox-android", "-keypass", "mlbox-android",
+    "-storepass", KEYSTORE_PASS, "-keypass", KEYSTORE_PASS,
     "-dname", "CN=mlbox, OU=mlbox, O=mlbox, L=Internet, C=ZZ",
   ]);
   ok(`generated ${path.basename(KEYSTORE)} (kept in the repo so future releases can update in place)`);
@@ -199,7 +212,7 @@ if (!existsSync(KEYSTORE)) {
 run(path.join(BT, "apksigner"), [
   "sign",
   "--ks", KEYSTORE, "--ks-key-alias", "mlbox",
-  "--ks-pass", "pass:mlbox-android", "--key-pass", "pass:mlbox-android",
+  "--ks-pass", `pass:${KEYSTORE_PASS}`, "--key-pass", `pass:${KEYSTORE_PASS}`,
   "--out", APK,
   aligned,
 ]);

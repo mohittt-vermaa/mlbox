@@ -7,7 +7,11 @@ export function el(tag, attrs = {}, ...kids) {
   for (const [k, v] of Object.entries(attrs)) {
     if (v === null || v === undefined || v === false) continue;
     if (k === "class") node.className = v;
-    else if (k === "html") node.innerHTML = v;
+    else if (k === "html") {
+      // Only used with developer-controlled trusted content (static HTML strings in source code).
+      // Never pass user input or untrusted data to the "html" attribute.
+      node.innerHTML = v;
+    }
     else if (k === "text") node.textContent = v;
     else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
     else node.setAttribute(k, v === true ? "" : v);

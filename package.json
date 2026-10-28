@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "main": "electron/main.cjs",
-  "description": "Four ML tools in one static page: tokenizer lens, browser playground, no-GPU recipes, and current LLM prices. No GPU, no API key, no install, no build step.",
+  "description": "Four ML tools in one static page: tokenizer lens, browser playground, no-GPU recipes, and current LLM prices. No GPU, no API key, no install, no build step. Includes CLI launchers for Linux/macOS (mlbox) and Windows (mlbox.ps1).",
   "scripts": {
     "serve": "python3 -m http.server 8000 --bind 0.0.0.0",
+    "serve:node": "npx serve . -l 8000",
     "build:exe": "node scripts/build-desktop.mjs win32",
     "build:desktop": "node scripts/build-desktop.mjs",
     "build:apk": "node scripts/build-apk.mjs",
@@ -16,7 +17,8 @@
     "test:browser": "node tests/browser.test.mjs",
     "fetch:models": "python3 tools/fetch_models.py",
     "build:tokenizers": "python3 tools/build_tokenizers.py",
-    "build:refs": "python3 tools/gen_reference.py"
+    "build:refs": "python3 tools/gen_reference.py",
+    "clean": "rm -rf dist/*.zip dist/*.apk dist/SHA256SUMS.txt dist/RELEASE_NOTES.md"
   },
   "keywords": [
     "tokenizer",
@@ -27,7 +29,12 @@
     "playground",
     "llm-pricing",
     "no-build",
-    "static-site"
+    "static-site",
+    "cli",
+    "cross-platform"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer": "^25.16.0"
+  }
 }

@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+# mlbox - CLI launcher for Linux/macOS
+# Usage: ./mlbox [serve|build|test|help]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+VERSION="0.2.0"
+
+print_banner() {
+  cat <<'EOF'
+  __  __     ____ _       __  __           _   _       
+ |  \/  |   / __ (_)     |  \/  |         | | (_)      
+ | \  / |__| |_  | |_ __ | \  / | __ _  __| |  _ _ __  
+ | |\/| / _ \__ \| | '_ \| |\/| |/ _` |/ _` | || '_ \ 
+ | |  | |  __/___) | |_) | |  | | (_| | (_| | || |_) |
+ |_|  |_|\___|____/| .__/|_|  |_|\__,_|\__,_|_|| .__/ 
+                  | |                         | |    
+                  |_|                         |_|    
+EOF
+  echo "  v$VERSION — four ML tools, one page, zero deps"
+  echo
+}
+
+usage() {
+  print_banner
+  cat <<EOF
+Usage: ./mlbox <command>
+
+Commands:
+  serve         Start local server (Python 3) and open browser
+  serve:node    Start local server (Node.js/npx serve) and open browser
+  build:desktop Build desktop app for current platform (Linux/macOS/Windows)
+  build:apk     Build Android APK (requires Android SDK setup)
+  test          Run all tests (tokenizer + playground)
+  test:token    Run tokenizer tests only
+  test:play     Run playground tests only
+  test:browser  Run browser E2E tests (requires puppeteer)
+  fetch         Download upstream tokenizer artifacts (~70 MB)
+  build:tok     Rebuild tokenizer vocab bundles from artifacts
+  clean         Remove build artifacts
+  help          Show this help
+
+Quick start:
+  ./mlbox serve          # Opens http://localhost:8000 in browser
+  ./mlbox build:desktop  # Creates dist/mlbox-v0.2.0-<platform>.zip
+
+Examples:
+  ./mlbox serve
+  ./mlbox build:desktop
+  ./mlbox test
+EOF
+}
+
+cmd_serve() {
+  print_banner
+  echo "Starting server on http://localhost:8000 ..."
+  echo "Press Ctrl+C to stop"
+  echo
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -m http.server 8000 --bind 0.0.0.0 &
+    SERVER_PID=$!
+    sleep 0.5
+    if command -v xdg-open >/dev/null 2>&1; then
+      xdg-open http://localhost:8000
+    elif command -v open >/dev/null 2>&1; then
+      open http://localhost:8000
+    fi
+    wait $SERVER_PID
+  elif command -v python >/dev/null 2>&1; then
+    python -m SimpleHTTPServer 8000 &
+    SERVER_PID=$!
+    sleep 0.5
+    if command -v xdg-open >/dev/null 2>&1; then
+      xdg-open http://localhost:8000
+    elif command -v open >/dev/null 2>&1; then
+      open http://localhost:8000
+    fi
+    wait $SERVER_PID
+  else
+    echo "Error: Python 3 not found. Install python3 or use 'npx serve .'"
+    exit 1
+  fi
+}
+
+cmd_serve_node() {
+  print_banner
+  echo "Starting server with npx serve ..."
+  if command -v npx >/dev/null 2>&1; then
+    npx serve . -l 8000
+  else
+    echo "Error: Node.js/npx not found. Install Node.js or use './mlbox serve'"
+    exit 1
+  fi
+}
+
+cmd_build_desktop() {
+  print_banner
+  echo "Building desktop app..."
+  if command -v node >/dev/null 2>&1; then
+    node scripts/build-desktop.mjs
+  else
+    echo "Error: Node.js not found. Install Node.js to build desktop app."
+    exit 1
+  fi
+}
+
+cmd_build_apk() {
+  print_banner
+  echo "Building Android APK..."
+  if [ ! -d ".sdk" ]; then
+    echo "Android SDK not found. Running setup first..."
+    bash .sdk/setup.sh
+  fi
+  if command -v node >/dev/null 2>&1; then
+    node scripts/build-apk.mjs
+  else
+    echo "Error: Node.js not found. Install Node.js to build APK."
+    exit 1
+  fi
+}
+
+cmd_test() {
+  print_banner
+  echo "Running all tests..."
+  if command -v node >/dev/null 2>&1; then
+    npm test
+  else
+    echo "Error: Node.js not found. Install Node.js to run tests."
+    exit 1
+  fi
+}
+
+cmd_test_token() {
+  print_banner
+  echo "Running tokenizer tests..."
+  if command -v node >/dev/null 2>&1; then
+    npm run test:tokenizer
+  else
+    echo "Error: Node.js not found."
+    exit 1
+  fi
+}
+
+cmd_test_play() {
+  print_banner
+  echo "Running playground tests..."
+  if command -v node >/dev/null 2>&1; then
+    npm run test:playground
+  else
+    echo "Error: Node.js not found."
+    exit 1
+  fi
+}
+
+cmd_test_browser() {
+  print_banner
+  echo "Running browser E2E tests..."
+  if command -v node >/dev/null 2>&1; then
+    npm run test:browser
+  else
+    echo "Error: Node.js not found."
+    exit 1
+  fi
+}
+
+cmd_fetch() {
+  print_banner
+  echo "Fetching upstream tokenizer artifacts..."
+  if command -v python3 >/dev/null 2>&1; then
+    python3 tools/fetch_models.py
+  else
+    echo "Error: Python 3 not found."
+    exit 1
+  fi
+}
+
+cmd_build_tok() {
+  print_banner
+  echo "Building tokenizer vocab bundles..."
+  if command -v python3 >/dev/null 2>&1; then
+    python3 tools/build_tokenizers.py
+  else
+    echo "Error: Python 3 not found."
+    exit 1
+  fi
+}
+
+cmd_clean() {
+  print_banner
+  echo "Cleaning build artifacts..."
+  rm -rf dist/*.zip dist/*.apk dist/SHA256SUMS.txt dist/RELEASE_NOTES.md
+  rm -rf .sdk/build-tools .sdk/platforms .sdk/emulator 2>/dev/null || true
+  echo "Done."
+}
+
+main() {
+  case "${1:-help}" in
+    serve) cmd_serve ;;
+    serve:node) cmd_serve_node ;;
+    build:desktop) cmd_build_desktop ;;
+    build:apk) cmd_build_apk ;;
+    test) cmd_test ;;
+    test:token) cmd_test_token ;;
+    test:play) cmd_test_play ;;
+    test:browser) cmd_test_browser ;;
+    fetch) cmd_fetch ;;
+    build:tok) cmd_build_tok ;;
+    clean) cmd_clean ;;
+    help|--help|-h) usage ;;
+    *) echo "Unknown command: $1"; usage; exit 1 ;;
+  esac
+}
+
+main "$@"
