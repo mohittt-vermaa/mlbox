@@ -225,6 +225,33 @@ function initOnboarding() {
     setTimeout(() => notify("Welcome to mlbox! 🎉", "Press G for the guide, 1–4 for tabs, Ctrl+Enter to run.", "success"), 500);
   }
 
+// Expose reset for testing/debugging
+window.mlboxResetOnboarding = () => {
+  store.set(ONBOARDING_KEY, null);
+  location.reload();
+};
+
+function addOnboardingResetToGuide() {
+  const root = $("#panel-guide");
+  if (!root) return;
+  let btn = $("#guide-onboarding-reset");
+  if (btn) return;
+  
+  // Find the keyboard shortcuts card
+  const cards = $$(".card", root);
+  const shortcutsCard = cards.find(c => c.textContent.includes("Keyboard shortcuts"));
+  if (shortcutsCard) {
+    btn = el("button", {
+      id: "guide-onboarding-reset",
+      class: "btn sm",
+      style: "margin-top: 12px;",
+      text: "🔄 Show Onboarding Again",
+      onclick: () => window.mlboxResetOnboarding()
+    });
+    shortcutsCard.appendChild(btn);
+  }
+}
+
   // Show modal
   overlay.classList.remove("hidden");
 }
@@ -368,6 +395,17 @@ document.addEventListener("keydown", (e) => {
 initTheme();
 initOnboarding();
 updateBudgetDisplay();
+
+// Add 'Show Onboarding' button to Guide tab for easy access
+const originalShow = show;
+window.show = async function(id) {
+  await originalShow(id);
+  updateBudgetDisplay();
+  // If guide tab is shown, add onboarding reset button
+  if (id === "guide") {
+    setTimeout(() => addOnboardingResetToGuide(), 100);
+  }
+};
 
 // Re-check budget on tab switch (in case prices tab updated it)
 const originalShow = show;
