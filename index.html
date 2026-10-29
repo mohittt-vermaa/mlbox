@@ -25,6 +25,7 @@
       <button id="tab-gpu" role="tab" aria-selected="false" aria-controls="panel-gpu"><span>3</span> 🐢 No-GPU recipes</button>
       <button id="tab-prices" role="tab" aria-selected="false" aria-controls="panel-prices"><span>4</span> 💸 Prices</button>
       <button id="tab-guide" role="tab" aria-selected="false" aria-controls="panel-guide"><span>G</span> 📖 Guide</button>
+      <button id="theme-toggle" aria-label="Toggle theme" title="Toggle light/dark theme">🌙</button>
     </nav>
   </div>
 </header>
@@ -51,6 +52,29 @@
     </div>
   </div>
 </footer>
+
+<!-- Onboarding Modal -->
+<div id="onboarding" class="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+  <div class="onboarding-modal">
+    <div class="onboarding-header">
+      <h2 id="onboarding-title">Welcome to mlbox</h2>
+      <button class="onboarding-close" aria-label="Skip onboarding">×</button>
+    </div>
+    <div class="onboarding-steps" id="onboarding-steps"></div>
+    <div class="onboarding-progress" id="onboarding-progress"></div>
+  </div>
+</div>
+
+<!-- Notification Container -->
+<div id="notifications" class="notification-container" aria-live="polite" aria-label="Notifications"></div>
+
+<!-- Budget Tracker -->
+<div id="budget-tracker" class="budget-tracker hidden" role="button" aria-label="AI budget tracker" tabindex="0">
+  <span class="budget-icon">💰</span>
+  <span class="budget-label">AI Budget</span>
+  <span class="budget-indicator"></span>
+  <span class="budget-value" id="budget-value">$0.00</span>
+</div>
 
 <script type="module" src="js/app.js"></script>
 </body>
